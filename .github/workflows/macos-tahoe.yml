@@ -1,0 +1,35 @@
+name: macOS Tahoe VNC
+
+on: workflow_dispatch
+
+jobs:
+  vnc:
+    runs-on: macos-26
+    timeout-minutes: 360
+    steps:
+      - name: Show macOS version
+        run: sw_vers
+
+      - name: Enable Screen Sharing (VNC)
+        env:
+          VNC_PASSWORD: ${{ secrets.VNC_PASSWORD }}
+        run: |
+          sudo dscl . -passwd /Users/runner "$VNC_PASSWORD"
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -activate -configure -access -on \
+            -clientopts -setvnclegacy -vnclegacy yes \
+            -clientopts -setvncpw -vncpw "$VNC_PASSWORD" \
+            -restart -agent -privs -all
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          hostname: gh-macos-tahoe
+
+      - name: Print Tailscale IP
+        run: |
+          echo "Connect to: $(tailscale ip -4):5900"
+
+      - name: Keep alive
+        run: sleep 21000
